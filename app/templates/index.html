@@ -1,0 +1,405 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+    <title>CSGO出库存 DOTA2出库存</title>
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="expires" content="0">
+    <meta http-equiv="keywords" content="CSGO出库存  DOTA2出库存">
+    <meta http-equiv="description" content="CSGO出库存  DOTA2出库存">
+    <script type="text/javascript" src="static/dwr/engine.js"></script>
+    <script type="text/javascript" src="static/dwr/util.js"></script>
+    <script type="text/javascript" src="static/dwr/interface/TmpService.js"></script>
+    <script src="static/scripts/artDialog4.1.7/artDialog.js?skin=simple"></script>
+    <script src="http://pv.sohu.com/cityjson?ie=utf-8"></script>
+    <script type="text/javascript" src="static/scripts/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="static/easy/easydialog.min.js"></script>
+    <link type="text/css" rel="stylesheet" href="static/easy/easydialog.css">
+    <script type="text/javascript">
+        function showdes(des) {
+            var x = document.getElementById(des).innerHTML;
+            art.dialog({
+                follow: document.getElementById('img' + des),
+                width: 200,
+                padding: 0,
+                content: x
+            });
+        }
+
+        function closedes() {
+            var list = art.dialog.list;
+            for (var i in list) {
+                list[i].close();
+            }
+            ;
+        }
+
+        $(function () {
+            var fetch_b = $('#fetch');
+            fetch_b.on('click', function () {
+                fetch_b.attr("disabled", "disabled");
+                var gameid = $('#type').val();
+                var data = {gameid: gameid}
+                var steamId = $('#steamId').val();
+                if ($('#isGuoFuId').is(":checked")) {
+                    data['gf_id'] = steamId;
+                } else {
+                    data['steamid'] = steamId;
+                }
+                $.post('storage', data, function (res) {
+                    $('#price_div').show();
+                    fetch_b.removeAttr("disabled");
+                });
+//                var interval = setInterval(function () {
+//                    $.get('query', {}, function (res) {
+//                        if(res.result){
+//                            window.clearInterval(interval);
+//                            $('price_div').show();
+//                            fetch_b.removeAttr("disabled");
+//                        }else {
+//                            if (res.reason === 'storage_err'){
+//                                fetch_b.removeAttr("disabled");
+//                            }
+//                        }
+//                    })
+//                }, 5 * 1000);
+            });
+            $('#market').change(function (e) {
+                var market = $('#market').val();
+                if (market === 'steam') {
+                    $('#price_type').attr("disabled", "disabled")
+                } else {
+                    $('#price_type').removeAttr("disabled")
+
+                }
+            });
+            var $to_page = $('#page');
+            var $cur_page = $('#pageNum');
+            $('#prices').on('click', function () {
+                var price_type = $('#price_type').val();
+                var market = $('#market').val();
+                if (market === 'c5' && price_type === 'buy') {
+                    $.get('/islogin', {}, function (res) {
+                        if (!res.result) {
+                            easyDialog.open({
+                                container: {
+                                    header: '登录',
+                                    content: '<div id="login">\n' +
+                                    '        <div><label>用户名</label><input id="username"/></div>\n' +
+                                    '        <br>\n' +
+                                    '        <div><label>密&nbsp&nbsp&nbsp码</label><input type="password" id="password"/>\n' +
+                                    '        <input id="dologin" type="button" value="登录"></div>\n' +
+                                    '    </div>'
+                                },
+                                drag: false
+                            });
+                            $('#dologin').on('click', function () {
+                                var username = $('#username').val();
+                                var password = $('#password').val();
+                                $.post('/login', {username: username, password: password}, function (res) {
+                                    if (res.result) {
+                                        easyDialog.open(
+                                            {
+                                                container: {
+                                                    content: '登录成功',
+                                                    yesFn: true
+                                                },
+                                                autoClose: 2000,
+                                                callback: function () {
+                                                    $('#goodsForm').submit();
+                                                }
+                                            });
+                                    } else {
+                                        easyDialog.open(
+                                            {
+                                                container: {
+                                                    content: res.message,
+                                                    yesFn: true
+                                                },
+                                                autoClose: 2000
+                                            });
+                                    }
+                                })
+                            });
+                        } else {
+                            $('#goodsForm').submit();
+                        }
+                    })
+                } else {
+                    $('#goodsForm').submit();
+                }
+            });
+            var market = $('#market').val();
+            var price_type = $('#price_type').val();
+            $('#first_page').on('click', function () {
+                if ('1' !== $cur_page.val()) {
+                    $to_page.val('1');
+                    $('#goodsForm').submit();
+                } else {
+                    alert('已经是第一页了..');
+                }
+            });
+            $('#last_page').on('click', function () {
+                if ($cur_page.attr('total_page') !== $cur_page.val()) {
+                    $to_page.val($cur_page.attr('total_page'));
+                    $('#price_type').val(price_type);
+                    $('#market').val(market);
+                    $('#goodsForm').submit();
+                } else {
+                    alert('已经是最后一页了..');
+                }
+            });
+            $('#prev_page').on('click', function () {
+                if ('1' !== $cur_page.val()) {
+                    $to_page.val(parseInt($cur_page.val()) - 1);
+                    $('#price_type').val(price_type);
+                    $('#market').val(market);
+                    $('#goodsForm').submit();
+                } else {
+                    alert('已经是第一页了..');
+                }
+            });
+            $('#next_page').on('click', function () {
+                if ($cur_page.attr('total_page') !== $cur_page.val()) {
+                    $('#price_type').val(price_type);
+                    $('#market').val(market);
+                    $to_page.val(parseInt($cur_page.val()) + 1);
+                    $('#goodsForm').submit();
+                } else {
+                    alert('已经是最后一页了..');
+                }
+            });
+            $('#page_submit').on('click', function () {
+                if ($cur_page.attr('total_page') >= $cur_page.val()) {
+                    $('#price_type').val(price_type);
+                    $('#market').val(market);
+                    $to_page.val($cur_page.val());
+                    $('#goodsForm').submit();
+                } else {
+                    alert('没有那么多页..');
+                }
+            });
+        })
+
+
+    </script>
+</head>
+
+<body bgcolor="#D3DBEE">
+<div style="float:left;width:2%">
+    &nbsp;&nbsp;
+</div>
+<div style="margin:0 auto;text-align:center;width:80%;float:left">
+    <div>
+        <div style="width:20%;float:left">
+            <!-- 左上角留白-->
+            &nbsp;
+        </div>
+        <div style="width:80%;text-align:center;float:left">
+            <form>
+                <span>库存类型:</span>
+                <select name="type" id="type" class="chosen-select dropdown">
+                    <option value="730">CS:GO</option>
+                    <option value="570" selected="selected">DOTA2</option>
+                </select>
+                SteamId:<input type="text" id="steamId" value="" name="steamId"/>
+                <input type="checkbox" name="isGuoFuId" id="isGuoFuId" balue="aaa"/>国服ID
+                <input type="button" value="点击查询库存" id="fetch" class="button-blue"
+                       style="float:none"/>
+                <br>
+                <span id="info"></span>
+                &nbsp;&nbsp;
+            </form>
+        </div>
+    </div>
+    <div>
+        <div>
+            <div style="float:left;width:20%">
+                <p id="rmbvalue1" style="color:red;font-weight:bold;text-align:left">
+                    注意：
+                </p>
+                <p id="rmbvalue1" style="color:red;text-align:left">
+                    结果为Steam市场美金价格，并非现实美金
+                </p>
+                <p id="rmbvalue1" style="color:red;text-align:left">
+                    CSGO物品中贴纸、磨损等皆不计入
+                </p>
+                <p id="rmbvalue1" style="color:red;text-align:left">
+                    DOTA2物品中的棱彩，宝石等皆不识别
+                </p>
+                <p id="rmbvalue1" style="color:red;text-align:left">
+                    如有特殊宝石在出售时联系QQ或Steam说明
+                </p>
+                <p id="rmbvalue1" style="color:red;text-align:left">
+                    如需帮助直接联系QQ或Steam
+                </p>
+                <!-- 左侧广告位 -->
+                &nbsp;
+                <!-- <div style="margin-top:80px;margin-left:15%">
+                <a target="_blank" href="http://xiaoweigame.taobao.com">
+                <img width="200px" alt="小薇电玩Dota2店铺" src="img/taobao.jpg"/>
+                </a>
+                </div> -->
+            </div>
+        </div>
+        <div id="price_div" style="display: {{display}}">
+            <div>
+                <form id="goodsForm" method="post" action="/prices">
+                    <input name="page" id="page" style="display: none"/>
+                    <span>市场:</span>
+                    <select name="market" id="market" class="chosen-select dropdown">
+                       {% if market == 'c5'%}
+                        <option value="steam" >STEAM</option>
+                        <option value="c5" selected="selected">C5</option>
+                        {% else %}
+                        <option value="steam" selected="selected">STEAM</option>
+                        <option value="c5" >C5</option>
+                        {% endif %}
+                    </select>
+                    <span>价格类型:</span>
+                    {% if market == 'steam' %}
+                    <select name="price_type" id="price_type" class="chosen-select dropdown" disabled="disabled">
+                    {% else %}
+                    <select name="price_type" id="price_type" class="chosen-select dropdown">
+                    {% endif %}
+                        {% if price_type == 'sell'%}
+                        <option value="sell" selected="selected">出售价格</option>
+                        <option value="buy">求购价格</option>
+                        {% else %}
+                        <option value="sell">出售价格</option>
+                        <option value="buy" selected="selected">求购价格</option>
+                        {% endif %}
+                    </select>
+                    <input value="点击计算价值" id="prices" class="button-blue" type="button"
+                           style="float:none"/>
+                </form>
+            </div>
+        </div>
+        {% if display == 'block' %}
+        <div style="display:{{display}}">
+            <div id="totalInfo">
+                <span>Steam市场总价:</span><span
+                    style="color:red;font-weight:bold;">${{total}}</span><span>(</span>465<span>件)</span>
+                <span>税后价格:<span style="color:red;font-weight:bold;">${{taxed_total}}</span></span>
+                <br>
+                <span id="rmbvalue">库存收购估价:<span style="color:red;font-weight:bold;font-size:30px" id="salePrice">￥{{rmb_total}}</span>,有意出售请联系<a
+                        target="_blank"
+                        href="http://wpa.qq.com/msgrd?v=3&amp;uin=454536775&amp;site=qq&amp;menu=yes"><img border="0"
+                                                                                                           src="http://wpa.qq.com/pa?p=2:454536775:51"
+                                                                                                           alt="如有出售意愿，可联系QQ"
+                                                                                                           title="如有出售意愿，可联系QQ"></a>
+                    或添加Steam好友<a href="steam://friends/add/76561198070173809"><img border="0" src="static/img/steam.ico"
+                                                                                   alt="如有出售意愿，可添加Steam好友"
+                                                                                   title="如有出售意愿，可添加Steam好友"></a>
+                </span>
+                <br>
+                <br><br>
+            </div>
+            <div>
+                {% for k in range ((items|length) // 100 + (1 if (items|length) % 100 != 0 else 0)) %}
+                {% if k == 0 %}
+                <table id="items" style="background-color: #111111; text-align: center;margin:0 auto; width:750px;"
+                       width="75%">
+                    {% else %}
+                    <table id="items"
+                           style="background-color: #111111; text-align: center;margin:0 auto; width:750px;display: none;"
+                           width="75%">
+                        {% endif %}
+                        {% for i in range(10*k , 10 * (k+1)) %}
+                        <tr>
+                            {% for item in items[i*10: (i+1)*10] %}
+                            <td>
+                                <div style="border:2px solid #{{item.name_color}};">
+                                    <img style="display:block; width:62px; height:62px;vertical-align:middle;"
+                                         id="img{{item.id}}"
+                                         src="http://steamcommunity-a.akamaihd.net/economy/image/{{item.imgurl}}/62fx62f"
+                                         alt="" onmouseout="closedes()" onmousemove="showdes('{{item.id}}')"
+                                    >
+                                </div>
+                                <span style="font-size:9px;display:block; line-height:30px; color: #5BD;width:62px;">
+                                        {{item.price}}
+                                    </span>
+                                <div style="display:none">
+                                    <div id="{{item.id}}" style="font-size:5px;background: #9d9d9d;text-align: left;">
+                                        <div style="font-size:5px;background: #9d9d9d;text-align: left;">
+
+                                            {% for des in item.descriptions %}
+                                            <span>{{des.value}}</span>
+                                            <br>
+                                            {%endfor%}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    {% endfor %}
+            </div>
+            <div>
+                <table align="center" cellpadding="10" cellspacing="0">
+
+                    <tbody>
+                    <tr height="10px">
+                        <td>
+                            <a id="first_page" class="button-blue" style="float:none" href="#">首页</a>
+                            <a id="prev_page" href="#" class="button-blue" style="float:none">上一页</a>
+                            <a id="next_page" href="#" class="button-blue" style="float:none">下一页</a>
+                            <a id="last_page" href="#" class="button-blue" style="float:none">尾页</a>
+                        </td>
+                        <td>
+                            第<input type="text" style="width: 20px" maxlength="2" name="pageNum"
+                                    value="{{current_page}}" id="pageNum" total_page="{{page}}">/{{page}}页
+                            <input id="page_submit" type="submit" value="跳转" onclick="submit()" class="button-blue"
+                                   style="float:none">
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <br>
+    <br>
+</div>
+
+<div style="float:left;width:18%;">
+
+
+    <span style="color:red;">登陆后自动填写steamID</span>
+    <br>
+    <a href="/goods.do?operate=login" style="text-decoration:none;" target="_self">
+        <img src="https://steamcommunity-a.akamaihd.net/public/images/signinthroughsteam/sits_small.png" width="154"
+             height="23" border="0">
+    </a>
+    <br>
+
+
+    <br>
+    <a href="steam://friends/add/76561198070173809">添加Steam好友<img border="0" src="static/img/steam.ico"
+                                                                  alt="如有出售意愿，可添加Steam好友"
+                                                                  title="如有出售意愿，可添加Steam好友"></a>
+    <br>
+    <br>
+    <a target="_blank" href="http://wpa.qq.com/msgrd?v=3&uin=454536775&site=qq&menu=yes"><img border="0"
+                                                                                              src="http://wpa.qq.com/pa?p=2:454536775:51"
+                                                                                              alt="如有出售意愿，可联系QQ"
+                                                                                              title="如有出售意愿，可联系QQ"/></a>
+    <br>
+    <br>
+    <a target="_blank"
+       href="http://shang.qq.com/wpa/qunwpa?idkey=b645d0b9c6e5a9554365ee660f96a54b5c5be9c7c0d13a63b049858b59df263a"><img
+            border="0" src="http://pub.idqqimg.com/wpa/images/group.png" alt="DOTA2/CSGO收库存网总群"
+            title="DOTA2/CSGO收库存网总群"></a>
+    <br>
+    <br>
+    <br>
+    <a target="_blank">
+        <a target="_blank" href="steam://friends/add/76561198070173809">
+            <img src="static/img/17.jpg" width="200px" alt="17CBGAME"/>
+        </a>
+</div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+database: dota2
+user: root
+password: dota2_market_134
+host: 103.242.132.133
+port: 3306
+minsize: 2
+maxsize: 10
+redis:
+  ip: localhost
+  port: 6379
+  username: jesse
+  password: 123456
