@@ -1,8 +1,8 @@
 import pathlib
 from aiohttp import web
 from binstar_client.utils import load_config
-from router import setup_routes
-from db import *
+from app.router import setup_routes
+from app.db import *
 import aiohttp_jinja2
 import jinja2
 import aiohttp_session
@@ -13,11 +13,11 @@ import aioredis
 import asyncio
 
 app = web.Application()
-conf = load_config(str(pathlib.Path('../config/aio-market.yaml')))
+conf = load_config(str(pathlib.Path('config/aio-market.yaml')))
 app['config'] = conf
 app.on_startup.append(init_mysql)
 app.on_cleanup.append(close_mysql)
-app.router.add_static('/static', path=str('../static'), name='static')
+app.router.add_static('/static', path=str('static'), name='static')
 aiohttp_jinja2.setup(app, loader=jinja2.PackageLoader('app', 'templates'))
 
 fernet_key = fernet.Fernet.generate_key()

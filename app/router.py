@@ -1,4 +1,4 @@
-from endpoint import *
+from .endpoint import *
 
 
 def setup_routes(app):
