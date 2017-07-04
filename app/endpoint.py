@@ -10,11 +10,29 @@ from datetime import datetime, date
 import numpy as np
 from aiohttp_session import setup, get_session, session_middleware
 import asyncio
-from tables import *
+from .tables import *
 
 
 def json_dumps(data, **kwargs):
     return json.dumps(data, cls=CJsonEncoder, **kwargs)
+
+
+def get_tax_price(price):
+    if not np.isfinite(price):
+        return np.inf
+    saleprice = price
+    dota2fee = np.floor(saleprice * 1000 * 2 / 23 / 10)
+    if dota2fee <= 1:
+        dota2fee = 0.01
+    else:
+        dota2fee = dota2fee / 100
+    vfee = np.floor(saleprice * 1000 / 23 / 10)
+    if vfee <= 1:
+        vfee = 0.01
+    else:
+        vfee = vfee / 100
+    saleprice = saleprice - vfee - dota2fee
+    return np.round(saleprice * 100) / 100
 
 
 class CJsonEncoder(json.JSONEncoder):
@@ -34,6 +52,7 @@ async def index(request):
     return {
         'display': 'None',
         'items': None,
+        'game': 570
     }
 
 
@@ -90,6 +109,11 @@ async def prices(request):
         })
     market = data['market']
 
+    if 'game' not in data:
+        game = '570'
+    else:
+        game = data['game']
+
     if 'price_type' not in data:
         price_type = 'sell'
     else:
@@ -144,6 +168,7 @@ async def prices(request):
                     item = storage[ds['id']]
                     for it in item:
                         it['price'] = np.float(d['price']) if d is not None else np.inf
+                        it['tax_price'] = get_tax_price(it['price'])
                         it['imgurl'] = ds['icon_url']
                         it['name_color'] = ds['name_color']
                         it['descriptions'] = ds['descriptions']
@@ -169,6 +194,7 @@ async def prices(request):
                     item = storage[ds['id']]
                     for it in item:
                         it['price'] = np.float(d['price']) if d is not None else np.inf
+                        it['tax_price'] = get_tax_price(it['price'])
                         it['imgurl'] = ds['icon_url']
                         it['name_color'] = ds['name_color']
                         it['descriptions'] = ds['descriptions']
@@ -178,6 +204,18 @@ async def prices(request):
         _prices = np.array(list(map(lambda a: a['price'], items)))
         _prices[np.isinf(_prices)] = np.nan
         total = np.nansum(_prices)
+        range1_num = np.nansum((_prices > 0) & (_prices <= 0.2))
+        range1_sum = np.nansum(_prices[(_prices > 0) & (_prices <= 0.2)])
+        range2_num = np.nansum((_prices > 0.2) & (_prices <= 1))
+        range2_sum = np.nansum(_prices[(_prices > 0.2) & (_prices <= 1)])
+        range3_num = np.nansum((_prices > 1) & (_prices <= 10))
+        range3_sum = np.nansum(_prices[(_prices > 1) & (_prices <= 10)])
+        range4_num = np.nansum((_prices > 10))
+        range4_sum = np.nansum(_prices[(_prices > 10)])
+
+        _taxed_prices = np.array(list(map(lambda a: a['tax_price'], items)))
+        _taxed_prices[np.isinf(_taxed_prices)] = np.nan
+        _taxed_total = np.nansum(_taxed_prices)
 
         session['price_type'] = price_type
         session['market'] = market
@@ -185,15 +223,24 @@ async def prices(request):
             'display': 'block',
             'items': items,
             'total': total,
-            'taxed_total': '%.2f' % (total * .8),
+            'taxed_total': '%.2f' % _taxed_total,
             'rmb_total': '%.2f' % (total * .8 * 6),
-            'page': int(np.ceil(len(items) / 100))
+            'page': int(np.ceil(len(items) / 100)),
+            'range1_num': int(range1_num),
+            'range1_sum': '%.2f' % float(range1_sum),
+            'range2_num': int(range2_num),
+            'range2_sum': '%.2f' % float(range2_sum),
+            'range3_num': int(range3_num),
+            'range3_sum': '%.2f' % float(range3_sum),
+            'range4_num': int(range4_num),
+            'range4_sum': '%.2f' % float(range4_sum),
         }
     _view = view.copy()
     _view['current_page'] = page
     _view['market'] = market
     _view['price_type'] = price_type
     _items = _view['items']
+    _view['game'] = game
     _view['items'] = _items[100 * (page - 1): 100 * page]
     return _view
 
@@ -224,7 +271,7 @@ async def storage_(request):
     #
     # steamid = str(76561198069046842)
     more_start = 0
-    storage_url = 'https://steamcommunity.com/profiles/%s/inventory/json/%s/2?trading=1&start=' % (steamid, game)
+    storage_url = 'https://steamcommunity.com/profiles/%s/inventory/json/%s/2?l=schinese&trading=1&start=' % (steamid, game)
     session = aiohttp.ClientSession()
     try:
         resp = await session.get(storage_url + str(more_start))
@@ -257,10 +304,13 @@ async def storage_(request):
                 while res is None:
                     await asyncio.sleep(10)
                 storage, description = parse(res, storage)
-
+            description = list(filter(lambda ds: ds['marketable'] == 1, description))
             description = dict({ds['market_hash_name']: ds for ds in description})
             user_session['storage'] = storage
             user_session['description'] = description
+            session['price_type'] = None
+            session['market'] = None
+            session['view'] = None
             # user_session.pop('storage_err', None)
     except Exception as e:
         user_session['storage_err'] = True
@@ -271,7 +321,8 @@ async def storage_(request):
     finally:
         await session.close()
         return web.json_response({
-            'result': True
+            'result': True,
+            'game': game
         })
 
 async def query(request):
