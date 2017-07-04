@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 
 from aiohttp import web
 import aiohttp_jinja2
@@ -10,7 +10,7 @@ from datetime import datetime, date
 import numpy as np
 from aiohttp_session import setup, get_session, session_middleware
 import asyncio
-from tables import *
+from .tables import *
 
 
 def json_dumps(data, **kwargs):
@@ -269,7 +269,7 @@ async def storage_(request):
             'reason': 'storage_err'
         })
     finally:
-        await session.close()
+        session.close()
         return web.json_response({
             'result': True
         })
