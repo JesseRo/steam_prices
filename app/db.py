@@ -21,7 +21,8 @@ async def init_mysql(app):
         user=conf['user'],
         password=conf['password'],
         minsize=conf['minsize'],
-        maxsize=conf['maxsize']
+        maxsize=conf['maxsize'],
+        charset='utf8'
     )
     #  seemed like aiomysql do not support schema creation for now..
     # engine = create_engine('mysql+pymysql://jesse:123456@119.28.64.212:3306/aio-market')

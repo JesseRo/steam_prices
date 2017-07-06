@@ -52,7 +52,8 @@ async def index(request):
     return {
         'display': 'None',
         'items': None,
-        'game': 570
+        'game': '570',
+        'market': 'steam'
     }
 
 
@@ -102,17 +103,14 @@ async def prices(request):
     data = await request.post()
 
     if 'market' not in data:
-        return web.json_response({
-            'result': False,
-            'code': 'no_market',
-            'message': '未指定市场..'
-        })
-    market = data['market']
+        market = 'steam'
+    else:
+        market = data['market']
 
-    if 'game' not in data:
+    if 'game' not in session:
         game = '570'
     else:
-        game = data['game']
+        game = session['game']
 
     if 'price_type' not in data:
         price_type = 'sell'
@@ -193,14 +191,16 @@ async def prices(request):
                 for name in description:
                     ds = description[name]
                     d = data.get(name, None)
-                    item = storage[ds['id']]
-                    for it in item:
-                        it['price'] = np.float(d['price']) if d is not None else np.inf
-                        it['tax_price'] = get_tax_price(it['price'])
-                        it['imgurl'] = ds['icon_url']
-                        it['name_color'] = ds['name_color']
-                        it['descriptions'] = ds['descriptions']
-                    items += item
+                    ids = ds['id']
+                    for _id in ids:
+                        item = storage[_id]
+                        for it in item:
+                            it['price'] = np.float(d['price']) if d is not None else np.inf
+                            it['tax_price'] = get_tax_price(it['price'])
+                            it['imgurl'] = ds['icon_url']
+                            it['name_color'] = ds['name_color']
+                            it['descriptions'] = ds['descriptions']
+                            items += item
 
         items.sort(key=lambda _it: _it['price'], reverse=True)
         _prices = np.array(list(map(lambda a: a['price'], items)))
@@ -319,6 +319,7 @@ async def storage_(request):
                 return des
             description = functools.reduce(redu, description, {})
             user_session['storage'] = storage
+            user_session['game'] = game
             user_session['description'] = description
             user_session.pop('price_type', None)
             user_session.pop('market', None)
