@@ -52,7 +52,8 @@ async def index(request):
     return {
         'display': 'None',
         'items': None,
-        'game': 570
+        'game': '570',
+        'market': 'steam'
     }
 
 
@@ -102,17 +103,14 @@ async def prices(request):
     data = await request.post()
 
     if 'market' not in data:
-        return web.json_response({
-            'result': False,
-            'code': 'no_market',
-            'message': '未指定市场..'
-        })
-    market = data['market']
+        market = 'steam'
+    else:
+        market = data['market']
 
-    if 'game' not in data:
+    if 'game' not in session:
         game = '570'
     else:
-        game = data['game']
+        game = session['game']
 
     if 'price_type' not in data:
         price_type = 'sell'
@@ -165,14 +163,16 @@ async def prices(request):
                 for name in description:
                     ds = description[name]
                     d = data.get(name, None)
-                    item = storage[ds['id']]
-                    for it in item:
-                        it['price'] = np.float(d['price']) if d is not None else np.inf
-                        it['tax_price'] = get_tax_price(it['price'])
-                        it['imgurl'] = ds['icon_url']
-                        it['name_color'] = ds['name_color']
-                        it['descriptions'] = ds['descriptions']
-                    items += item
+                    ids = ds['id']
+                    for _id in ids:
+                        item = storage[_id]
+                        for it in item:
+                            it['price'] = np.float(d['price']) if d is not None else np.inf
+                            it['tax_price'] = get_tax_price(it['price'])
+                            it['imgurl'] = ds['icon_url']
+                            it['name_color'] = ds['name_color']
+                            it['descriptions'] = ds['descriptions']
+                        items += item
         else:
             async with db.acquire() as conn:
                 if price_type == 'buy':
@@ -191,14 +191,16 @@ async def prices(request):
                 for name in description:
                     ds = description[name]
                     d = data.get(name, None)
-                    item = storage[ds['id']]
-                    for it in item:
-                        it['price'] = np.float(d['price']) if d is not None else np.inf
-                        it['tax_price'] = get_tax_price(it['price'])
-                        it['imgurl'] = ds['icon_url']
-                        it['name_color'] = ds['name_color']
-                        it['descriptions'] = ds['descriptions']
-                    items += item
+                    ids = ds['id']
+                    for _id in ids:
+                        item = storage[_id]
+                        for it in item:
+                            it['price'] = np.float(d['price']) if d is not None else np.inf
+                            it['tax_price'] = get_tax_price(it['price'])
+                            it['imgurl'] = ds['icon_url']
+                            it['name_color'] = ds['name_color']
+                            it['descriptions'] = ds['descriptions']
+                            items += item
 
         items.sort(key=lambda _it: _it['price'], reverse=True)
         _prices = np.array(list(map(lambda a: a['price'], items)))
@@ -222,7 +224,7 @@ async def prices(request):
         session['view'] = view = {
             'display': 'block',
             'items': items,
-            'total': total,
+            'total': '%.2f' % total,
             'taxed_total': '%.2f' % _taxed_total,
             'rmb_total': '%.2f' % (total * .8 * 6),
             'page': int(np.ceil(len(items) / 100)),
@@ -271,7 +273,7 @@ async def storage_(request):
     #
     # steamid = str(76561198069046842)
     more_start = 0
-    storage_url = 'https://steamcommunity.com/profiles/%s/inventory/json/%s/2?l=schinese&trading=1&start=' % (steamid, game)
+    storage_url = 'http://steamcommunity.com/profiles/%s/inventory/json/%s/2?l=schinese&trading=1&start=' % (steamid, game)
     session = aiohttp.ClientSession()
     try:
         resp = await session.get(storage_url + str(more_start))
@@ -294,7 +296,7 @@ async def storage_(request):
                 _items = functools.reduce(group_by, list(_items), _storage)
                 for k, v in _res['rgDescriptions'].items():
                     v['id'] = k
-                return _items, description + list(_res['rgDescriptions'].values())
+                return _items, list(_res['rgDescriptions'].values())
 
             storage, description = parse(res, storage)
             while res['more']:
@@ -303,14 +305,25 @@ async def storage_(request):
                 res = await resp.json()
                 while res is None:
                     await asyncio.sleep(10)
-                storage, description = parse(res, storage)
+                storage, _description = parse(res, storage)
+                description += _description
             description = list(filter(lambda ds: ds['marketable'] == 1, description))
-            description = dict({ds['market_hash_name']: ds for ds in description})
+
+            def redu(des, lis):
+                if lis['market_hash_name'] not in des:
+                    des[lis['market_hash_name']] = lis
+                    des[lis['market_hash_name']]['id'] = [lis['id']]
+                else:
+                    org = des[lis['market_hash_name']]
+                    org['id'].append(lis['id'])
+                return des
+            description = functools.reduce(redu, description, {})
             user_session['storage'] = storage
+            user_session['game'] = game
             user_session['description'] = description
-            session['price_type'] = None
-            session['market'] = None
-            session['view'] = None
+            user_session.pop('price_type', None)
+            user_session.pop('market', None)
+            user_session.pop('view', None)
             # user_session.pop('storage_err', None)
     except Exception as e:
         user_session['storage_err'] = True

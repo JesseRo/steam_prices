@@ -34,11 +34,15 @@
             ;
         }
         function calc() {
+            {% if market == 'steam' %}
             var price = parseFloat($('#b1').val()) * parseFloat({{range1_sum}});
             price += parseFloat($('#b2').val()) * parseFloat({{range2_sum}});
             price += parseFloat($('#b3').val()) * parseFloat({{range3_sum}});
             price += parseFloat($('#b4').val()) * parseFloat({{range4_sum}});
             $('#salePrice').text(Math.round(price * 100) / 100)
+            {% else %}
+            $('#salePrice').text({{total}})
+            {% endif %}
         }
 
         $(function () {
@@ -63,9 +67,9 @@
                         fetch_b.removeAttr("disabled");
                         game = res.game;
                         if (res.game !== '570') {
-                            $('#market').attr('disabled', disabled)
+                            $('#option_container').hide()
                         }else {
-                            $('#market').removeAttr('disabled')
+                            $('#option_container').show()
 
                         }
                     } else {
@@ -91,9 +95,9 @@
             $('#market').change(function (e) {
                 var market = $('#market').val();
                 if (market === 'steam') {
-                    $('#price_type').attr("disabled", "disabled")
+                    $('#price_type').hide()
                 } else {
-                    $('#price_type').removeAttr("disabled")
+                    $('#price_type').show()
 
                 }
             });
@@ -251,8 +255,13 @@
             <form>
                 <span>库存类型:</span>
                 <select name="type" id="type" class="chosen-select dropdown">
+                    {% if game == '570' %}
                     <option value="730">CS:GO</option>
                     <option value="570" selected="selected">DOTA2</option>
+                    {% else %}
+                    <option value="730" selected="selected">CS:GO</option>
+                    <option value="570">DOTA2</option>
+                    {% endif %}
                 </select>
                 SteamId:<input type="text" id="steamId" value="" name="steamId"/>
                 <input type="checkbox" name="isGuoFuId" id="isGuoFuId" balue="aaa"/>国服ID
@@ -298,12 +307,14 @@
             <div>
                 <form id="goodsForm" method="post" action="/prices">
                     <input name="page" id="page" style="display: none"/>
-                    <span>市场:</span>
                     {% if game == '570' %}
-                        <select name="market" id="market" class="chosen-select dropdown">
+                    <div id="option_container">
                     {% else %}
-                        <select name="market" id="market" class="chosen-select dropdown" disabled="disabled">
+                    <div id="option_container" style="display: none">
                     {% endif %}
+
+                        <span>市场:</span>
+                        <select name="market" id="market" class="chosen-select dropdown">
                             {% if market == 'c5'%}
                             <option value="steam">STEAM</option>
                             <option value="c5" selected="selected">C5</option>
@@ -312,33 +323,36 @@
                             <option value="c5">C5</option>
                             {% endif %}
                         </select>
+
                         <span>价格类型:</span>
                         {% if market != 'steam' %}
                         <select name="price_type" id="price_type" class="chosen-select dropdown">
+                        {% else %}
+                        <select name="price_type" id="price_type" class="chosen-select dropdown" style="display: none">
+                        {% endif %}
+                            {% if price_type == 'sell'%}
+                            <option value="sell" selected="selected">出售价格</option>
+                            <option value="buy">求购价格</option>
                             {% else %}
-                            <select name="price_type" id="price_type" class="chosen-select dropdown"
-                                    disabled="disabled">
-                                {% endif %}
-                                {% if price_type == 'sell'%}
-                                <option value="sell" selected="selected">出售价格</option>
-                                <option value="buy">求购价格</option>
-                                {% else %}
-                                <option value="sell">出售价格</option>
-                                <option value="buy" selected="selected">求购价格</option>
-                                {% endif %}
-                            </select>
-                            <input value="点击计算价值" id="prices" class="button-blue" type="button"
-                                   style="float:none"/>
+                            <option value="sell">出售价格</option>
+                            <option value="buy" selected="selected">求购价格</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                        <input value="点击计算价值" id="prices" class="button-blue" type="button"
+                               style="float:none"/>
                 </form>
             </div>
         </div>
         {% if display == 'block' %}
         <div style="display:{{display}}">
             <div id="totalInfo">
+                {% if market == 'steam' %}
                 <span>Steam市场总价:</span><span
                     style="color:red;font-weight:bold;">${{total}}</span><span>(</span>465<span>件)</span>
                 <span>税后价格:<span style="color:red;font-weight:bold;">${{taxed_total}}</span></span>
                 <br>
+                {%endif%}
                 <span id="rmbvalue">库存收购估价:<span style="color:red;font-weight:bold;font-size:30px" id="salePrice"></span>,有意出售请联系<a
                         target="_blank"
                         href="http://wpa.qq.com/msgrd?v=3&amp;uin=454536775&amp;site=qq&amp;menu=yes"><img border="0"
@@ -439,62 +453,63 @@
 
     <br>
     {% if display == 'block' %}
-    <table border="1" >
-        <tbody>
-        <tr>
-            <th>区间</th>
-            <th>数量</th>
-            <th>总价</th>
-            <th>比例</th>
-        </tr>
-        <tr>
-            <td style="width:50px">0-0.2</td>
-            <td>{{range1_num}}</td>
-            <td id="np1">${{range1_sum}}</td>
-            {% if game == '570'%}
-                <td><input type="text" id="b1" value="1" style="width:40px"></td>
-            {% else %}
-                <td><input type="text" id="b1" value="1" style="width:40px"></td>
-            {% endif %}
-        </tr>
-        <tr>
-            <td style="width:50px">0.2-1</td>
-            <td>{{range2_num}}</td>
-            <td id="np2">${{range2_sum}}</td>
-            {% if game == '570'%}
-            <td><input type="text" id="b2" value="4.5" style="width:40px"></td>
-            {% else %}
-            <td><input type="text" id="b2" value="4.5" style="width:40px"></td>
-            {% endif %}
-        </tr>
-        <tr>
-            <td style="width:50px">1-10</td>
-            <td>{{range3_num}}</td>
-            <td id="np3">${{range3_sum}}</td>
-            {% if game == '570'%}
-            <td><input type="text" id="b3" value="4.8" style="width:40px"></td>
-            {% else %}
-            <td><input type="text" id="b3" value="4.8" style="width:40px"></td>
-            {% endif %}
-        </tr>
-        <tr>
-            <td style="width:50px">&gt;10</td>
-            <td>{{range4_num}}</td>
-            <td id="np4">${{range4_sum}}</td>
-            {% if game == '570'%}
-            <td><input type="text" id="b4" value="5" style="width:40px"></td>
-            {% else %}
-            <td><input type="text" id="b4" value="5" style="width:40px"></td>
-            {% endif %}
-        </tr>
-        </tbody>
-    </table>
-    <br>
-    <input type="button" value="隐藏估价" id="hiddenvalue"class="button-blue" style="float:none;margin:0;width:65">
-    <input type="button" value="显示税后" id="aftertaxprice" class="button-blue" style="float:none;margin:0;width:65">
-    <input type="button" value="计算估价" id="calc"class="button-blue" style="float:none;margin:0;width:65">
+        {% if market == 'steam' %}
+        <table border="1" >
+            <tbody>
+            <tr>
+                <th>区间</th>
+                <th>数量</th>
+                <th>总价</th>
+                <th>比例</th>
+            </tr>
+            <tr>
+                <td style="width:50px">0-0.2</td>
+                <td>{{range1_num}}</td>
+                <td id="np1">${{range1_sum}}</td>
+                {% if game == '570'%}
+                    <td><input type="text" id="b1" value="1" style="width:40px"></td>
+                {% else %}
+                    <td><input type="text" id="b1" value="1" style="width:40px"></td>
+                {% endif %}
+            </tr>
+            <tr>
+                <td style="width:50px">0.2-1</td>
+                <td>{{range2_num}}</td>
+                <td id="np2">${{range2_sum}}</td>
+                {% if game == '570'%}
+                <td><input type="text" id="b2" value="4.5" style="width:40px"></td>
+                {% else %}
+                <td><input type="text" id="b2" value="4.5" style="width:40px"></td>
+                {% endif %}
+            </tr>
+            <tr>
+                <td style="width:50px">1-10</td>
+                <td>{{range3_num}}</td>
+                <td id="np3">${{range3_sum}}</td>
+                {% if game == '570'%}
+                <td><input type="text" id="b3" value="4.8" style="width:40px"></td>
+                {% else %}
+                <td><input type="text" id="b3" value="4.8" style="width:40px"></td>
+                {% endif %}
+            </tr>
+            <tr>
+                <td style="width:50px">&gt;10</td>
+                <td>{{range4_num}}</td>
+                <td id="np4">${{range4_sum}}</td>
+                {% if game == '570'%}
+                <td><input type="text" id="b4" value="5" style="width:40px"></td>
+                {% else %}
+                <td><input type="text" id="b4" value="5" style="width:40px"></td>
+                {% endif %}
+            </tr>
+            </tbody>
+        </table>
         <br>
-
+        <input type="button" value="隐藏估价" id="hiddenvalue"class="button-blue" style="float:none;margin:0;width:65">
+        <input type="button" value="显示税后" id="aftertaxprice" class="button-blue" style="float:none;margin:0;width:65">
+        <input type="button" value="计算估价" id="calc"class="button-blue" style="float:none;margin:0;width:65">
+            <br>
+        {% endif %}
     {% endif %}
     <a href="steam://friends/add/76561198070173809">添加Steam好友<img border="0" src="static/img/steam.ico"
                                                                   alt="如有出售意愿，可添加Steam好友"
