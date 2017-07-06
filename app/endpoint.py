@@ -112,12 +112,15 @@ async def prices(request):
     else:
         game = session['game']
 
+    if game != '570':
+        market = 'steam'
+
     if 'price_type' not in data:
         price_type = 'sell'
     else:
         price_type = data['price_type']
 
-    if market == 'c5' and price_type == 'buy':
+    if market == 'c5':
         if not check_auth(session):
             return web.json_response({
                 'result': False,
