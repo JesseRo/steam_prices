@@ -160,8 +160,8 @@ async def prices(request):
             transaction = await conn.begin()
             try:
                 if market == 'steam':
-                    _query = sa.select([goods.c.name, goods.c.price]).where(sa.and_(
-                        goods.c.name.in_(hash_names), goods.c.price is not None, goods.c.price != 'error'))
+                    _query = sa.select([goods.c.name, goods.c.price]).where(
+                        goods.c.name.in_(hash_names))
                     data = [dict(row.items()) async for row in conn.execute(_query)]
                     # data.sort(key=lambda d: float(d['price']), reverse=True)
                     data = dict({d['name']: d for d in data})
@@ -187,12 +187,12 @@ async def prices(request):
                 else:
                     if price_type == 'buy':
                         price = c5items.c.c5qiugouprice.label('price')
-                        _query = sa.select([c5items.c.markethashname, price]).where(sa.and_(
-                            c5items.c.markethashname.in_(hash_names), price is not None, price != 'error'))
+                        _query = sa.select([c5items.c.markethashname, price]).where(
+                            c5items.c.markethashname.in_(hash_names))
                     elif price_type == 'sell':
                         price = c5items.c.c5sellprice.label('price')
-                        _query = sa.select([c5items.c.markethashname, price]).where(sa.and_(
-                            c5items.c.markethashname.in_(hash_names), price is not None, price != 'error'))
+                        _query = sa.select([c5items.c.markethashname, price]).where(
+                            c5items.c.markethashname.in_(hash_names))
                     data = [dict(row.items()) async for row in conn.execute(_query)]
                     # data.sort(key=lambda d: float(d['price']), reverse=True)
                     data = dict({d['markethashname']: d for d in data})
@@ -207,7 +207,10 @@ async def prices(request):
                         for _id in ids:
                             item = storage[_id]
                             for it in item:
-                                it['price'] = np.float(d['price']) if d is not None else np.inf
+                                if d is not None and d['price'] is not None and d['price'] != 'error':
+                                    it['price'] = np.float(d['price'])
+                                else:
+                                    it['price'] = np.inf
                                 it['tax_price'] = get_tax_price(it['price'])
                                 it['imgurl'] = ds['icon_url']
                                 it['name_color'] = ds['name_color']
