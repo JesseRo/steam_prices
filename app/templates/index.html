@@ -349,7 +349,7 @@
             <div id="totalInfo">
                 {% if market == 'steam' %}
                 <span>Steam市场总价:</span><span
-                    style="color:red;font-weight:bold;">${{total}}</span><span>(</span>465<span>件)</span>
+                    style="color:red;font-weight:bold;">${{total}}</span><span>(</span>{{number}}<span>件)</span>
                 <span>税后价格:<span style="color:red;font-weight:bold;">${{taxed_total}}</span></span>
                 <br>
                 {%endif%}
@@ -396,7 +396,10 @@
                                 <div style="display:none">
                                     <div id="{{item.id}}" style="font-size:5px;background: #9d9d9d;text-align: left;">
                                         <div style="font-size:5px;background: #9d9d9d;text-align: left;">
-
+                                            <span style="color: {{item.name_color}}">{{item.market_name}}</span>
+                                            <br>
+                                            <span>{{item.type}}</span>
+                                            <br>
                                             {% for des in item.descriptions %}
                                             <span>{{des.value}}</span>
                                             <br>
@@ -440,16 +443,6 @@
 </div>
 
 <div style="float:left;width:18%;">
-
-
-    <span style="color:red;">登陆后自动填写steamID</span>
-    <br>
-    <a href="/goods.do?operate=login" style="text-decoration:none;" target="_self">
-        <img src="https://steamcommunity-a.akamaihd.net/public/images/signinthroughsteam/sits_small.png" width="154"
-             height="23" border="0">
-    </a>
-    <br>
-
 
     <br>
     {% if display == 'block' %}

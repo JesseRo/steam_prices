@@ -11,6 +11,7 @@ import numpy as np
 from aiohttp_session import setup, get_session, session_middleware
 import asyncio
 from .tables import *
+import traceback
 
 
 def json_dumps(data, **kwargs):
@@ -153,11 +154,12 @@ async def prices(request):
             }
 
         hash_names = tuple(map(lambda _ds: _ds['market_hash_name'], description.values()))
+        no_items = []
 
-        if market == 'steam':
-            async with db.acquire() as conn:
-                transaction = await conn.begin()
-                try:
+        async with db.acquire() as conn:
+            transaction = await conn.begin()
+            try:
+                if market == 'steam':
                     _query = sa.select([goods.c.name, goods.c.price]).where(sa.and_(
                         goods.c.name.in_(hash_names), goods.c.price is not None, goods.c.price != 'error'))
                     data = [dict(row.items()) async for row in conn.execute(_query)]
@@ -168,7 +170,9 @@ async def prices(request):
                     for name in description:
                         ds = description[name]
                         d = data.get(name, None)
-                        ids = ds['id']
+                        if d is None:
+                            no_items.append(ds)
+                        ids = set(ds['id'])
                         for _id in ids:
                             item = storage[_id]
                             for it in item:
@@ -177,15 +181,10 @@ async def prices(request):
                                 it['imgurl'] = ds['icon_url']
                                 it['name_color'] = ds['name_color']
                                 it['descriptions'] = ds['descriptions']
+                                it['market_name'] = ds['market_name']
+                                it['type'] = ds['type']
                             items += item
-                except Exception:
-                    await transaction.rollback()
                 else:
-                    await transaction.commit()
-        else:
-            async with db.acquire() as conn:
-                transaction = await conn.begin()
-                try:
                     if price_type == 'buy':
                         price = c5items.c.c5qiugouprice.label('price')
                         _query = sa.select([c5items.c.markethashname, price]).where(sa.and_(
@@ -202,8 +201,9 @@ async def prices(request):
                     for name in description:
                         ds = description[name]
                         d = data.get(name, None)
-
-                        ids = ds['id']
+                        if d is None:
+                            no_items.append(ds)
+                        ids = set(ds['id'])
                         for _id in ids:
                             item = storage[_id]
                             for it in item:
@@ -212,11 +212,29 @@ async def prices(request):
                                 it['imgurl'] = ds['icon_url']
                                 it['name_color'] = ds['name_color']
                                 it['descriptions'] = ds['descriptions']
-                                items += item
-                except Exception:
-                    await transaction.rollback()
-                else:
-                    await transaction.commit()
+                                it['market_name'] = ds['market_name']
+                                it['type'] = ds['type']
+                            items += item
+
+                if no_items:
+                    _query = sa.select([no_item.c.market_hash_name, no_item.c.market])
+                    prev_no_items = [row.market_hash_name + '_' + row.market async for row in conn.execute(_query)]
+                    # prev_no_items = set(row.market_hash_name + '_' + row.market async for row in conn.execute(_query))
+                    _no_items = []
+                    for ni in no_items:
+                        if not ((ni['market_hash_name'] + '_' + market) in prev_no_items):
+                            _no_items.append({
+                                'market_hash_name': ni['market_hash_name'],
+                                'market_name': ni['market_name'],
+                                'market': market
+                            })
+                    _insert = sa.insert(no_item, _no_items)
+                    conn.execute(_insert)
+            except Exception as e:
+                traceback.print_exc()
+                await transaction.rollback()
+            else:
+                await transaction.commit()
 
         items.sort(key=lambda _it: _it['price'], reverse=True)
         _prices = np.array(list(map(lambda a: a['price'], items)))
@@ -240,6 +258,7 @@ async def prices(request):
         session['view'] = view = {
             'display': 'block',
             'items': items,
+            'number': len(items),
             'total': '%.2f' % total,
             'taxed_total': '%.2f' % _taxed_total,
             'rmb_total': '%.2f' % (total * .8 * 6),

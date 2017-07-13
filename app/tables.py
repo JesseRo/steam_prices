@@ -23,3 +23,10 @@ reg_user = sa.Table(
     sa.Column('password', sa.String(50), nullable=False),
     sa.Column('expire', sa.DATETIME(), nullable=False),
 )
+
+no_item = sa.Table(
+    'no_item', meta,
+    sa.Column('market_hash_name', sa.String(255), nullable=True),
+    sa.Column('market_name', sa.String(255), nullable=True),
+    sa.Column('market', sa.String(255), nullable=True),
+)
