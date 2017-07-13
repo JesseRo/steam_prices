@@ -232,7 +232,7 @@ async def prices(request):
                                 'market': market
                             })
                     _insert = sa.insert(no_item, _no_items)
-                    conn.execute(_insert)
+                    await conn.execute(_insert)
             except Exception as e:
                 traceback.print_exc()
                 await transaction.rollback()
