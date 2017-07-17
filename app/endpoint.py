@@ -54,7 +54,8 @@ async def index(request):
         'display': 'None',
         'items': None,
         'game': '570',
-        'market': 'steam'
+        'market': 'steam',
+        'rid': str(uuid.uuid4())
     }
 
 
@@ -100,8 +101,17 @@ async def islogin(request):
 
 @aiohttp_jinja2.template('index.html')
 async def prices(request):
-    session = await get_session(request)
+    _session = await get_session(request)
     data = await request.post()
+
+    if 'rid' not in data:
+        return web.HTTPInternalServerError()
+
+    rid = data['rid']
+    if rid not in _session:
+        return web.HTTPInternalServerError(text='查询到的库存已过期，请重新查询..')
+
+    session = _session[rid]
 
     if 'market' not in data:
         market = 'steam'
@@ -122,7 +132,7 @@ async def prices(request):
         price_type = data['price_type']
 
     if market == 'c5':
-        if not check_auth(session):
+        if not check_auth(_session):
             return web.json_response({
                 'result': False,
                 'code': 'auth_err',
@@ -231,8 +241,9 @@ async def prices(request):
                                 'market_name': ni['market_name'],
                                 'market': market
                             })
-                    _insert = sa.insert(no_item, _no_items)
-                    await conn.execute(_insert)
+                    if _no_items:
+                        _insert = sa.insert(no_item, _no_items)
+                        await conn.execute(_insert)
             except Exception as e:
                 traceback.print_exc()
                 await transaction.rollback()
@@ -274,6 +285,7 @@ async def prices(request):
             'range3_sum': '%.2f' % float(range3_sum),
             'range4_num': int(range4_num),
             'range4_sum': '%.2f' % float(range4_sum),
+            'rid': rid
         }
     _view = view.copy()
     _view['current_page'] = page
@@ -306,10 +318,10 @@ async def storage_(request):
             'message': '未指定游戏..'
         })
     game = data['gameid']
-    #
-    # game = '570'
-    #
-    # steamid = str(76561198069046842)
+    if 'rid' not in data:
+        return web.HTTPInternalServerError(text='查询到的库存已过期，请重新查询..')
+    rid = data['rid']
+
     more_start = 0
     storage_url = 'http://steamcommunity.com/profiles/%s/inventory/json/%s/2?l=schinese&trading=1&start=' % (steamid, game)
     session = aiohttp.ClientSession()
@@ -356,15 +368,17 @@ async def storage_(request):
                     org['id'].append(lis['id'])
                 return des
             description = functools.reduce(redu, description, {})
-            user_session['storage'] = storage
-            user_session['game'] = game
-            user_session['description'] = description
-            user_session.pop('price_type', None)
-            user_session.pop('market', None)
-            user_session.pop('view', None)
+
+            r_session = user_session[rid] = {}
+            r_session['storage'] = storage
+            r_session['game'] = game
+            r_session['description'] = description
+            r_session.pop('price_type', None)
+            r_session.pop('market', None)
+            r_session.pop('view', None)
             # user_session.pop('storage_err', None)
     except Exception as e:
-        user_session['storage_err'] = True
+        r_session['storage_err'] = True
         return web.json_response({
             'result': False,
             'reason': 'storage_err'
