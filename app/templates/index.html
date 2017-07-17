@@ -16,6 +16,7 @@
     <script type="text/javascript" src="static/easy/easydialog.min.js"></script>
     <link type="text/css" rel="stylesheet" href="static/easy/easydialog.css">
     <script type="text/javascript">
+        var rid = '{{rid}}';
         function showdes(des) {
             var x = document.getElementById(des).innerHTML;
             art.dialog({
@@ -52,7 +53,7 @@
             fetch_b.on('click', function () {
                 fetch_b.attr("disabled", "disabled");
                 var gameid = $('#type').val();
-                var data = {gameid: gameid}
+                var data = {gameid: gameid, rid: rid};
                 var steamId = $('#steamId').val();
                 if ($('#isGuoFuId').is(":checked")) {
                     data['gf_id'] = steamId;
@@ -338,6 +339,7 @@
                             <option value="buy" selected="selected">求购价格</option>
                             {% endif %}
                         </select>
+                        <input name="rid" style="display: none;" value="{{rid}}"/>
                     </div>
                         <input value="点击计算价值" id="prices" class="button-blue" type="button"
                                style="float:none"/>
