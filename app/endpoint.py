@@ -357,7 +357,7 @@ async def storage_(request):
                     await asyncio.sleep(10)
                 storage, _description = parse(res, storage)
                 description += _description
-            description = list(filter(lambda ds: ds['marketable'] == 1, description))
+            description = list(filter(lambda ds: ds['marketable'] == 1 and ds['tradable'] == 1, description))
 
             def redu(des, lis):
                 if lis['market_hash_name'] not in des:
@@ -377,11 +377,16 @@ async def storage_(request):
             r_session.pop('market', None)
             r_session.pop('view', None)
             # user_session.pop('storage_err', None)
+        else:
+            return web.json_response({
+                'result': False,
+                'message': '未公开库存资料或者库存为空..'
+            })
     except Exception as e:
         r_session['storage_err'] = True
         return web.json_response({
             'result': False,
-            'reason': 'storage_err'
+            'message': 'storage_err'
         })
     finally:
         session.close()
