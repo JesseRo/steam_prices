@@ -307,7 +307,7 @@ async def storage_(request):
         if steamid:
             profile_url = re.findall(r'(steamcommunity.*?id/.*?/)', steamid)
             if profile_url:
-                profile_resp = await session.get('https://' + profile_url[0])
+                profile_resp = await session.get('http://' + profile_url[0])
                 profile_resp = await profile_resp.text()
                 steamid = re.findall(r'g_rgProfileData = .*?(\d{15,})', profile_resp)
                 if steamid:
@@ -317,7 +317,7 @@ async def storage_(request):
         if steamid:
             profile_url = re.findall(r'(steamcommunity.*?id/.*?/)', steamid)
             if profile_url:
-                profile_resp = await session.get('https://' + profile_url[0])
+                profile_resp = await session.get('http://' + profile_url[0])
                 profile_resp = await profile_resp.text()
                 steamid = re.findall(r'g_rgProfileData = .*?(\d{15,})', profile_resp)
                 if steamid:
