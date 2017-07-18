@@ -12,6 +12,7 @@ from aiohttp_session import setup, get_session, session_middleware
 import asyncio
 from .tables import *
 import traceback
+import re
 
 
 def json_dumps(data, **kwargs):
@@ -298,12 +299,32 @@ async def prices(request):
 
 async def storage_(request):
     user_session = await get_session(request)
+    session = aiohttp.ClientSession()
 
     data = await request.post()
     if 'steamid' in data:
         steamid = data['steamid']
+        if steamid:
+            profile_url = re.findall(r'(steamcommunity.*?id/.*?/)', steamid)
+            if profile_url:
+                profile_resp = await session.get('https://' + profile_url[0])
+                profile_resp = await profile_resp.text()
+                steamid = re.findall(r'g_rgProfileData = .*?(\d{15,})', profile_resp)
+                if steamid:
+                    steamid = steamid[0]
     elif 'gf_id' in data:
-        steamid = str(int(data['gf_id']) + 76561197960265728)
+        steamid = data['gf_id']
+        if steamid:
+            profile_url = re.findall(r'(steamcommunity.*?id/.*?/)', steamid)
+            if profile_url:
+                profile_resp = await session.get('https://' + profile_url[0])
+                profile_resp = await profile_resp.text()
+                steamid = re.findall(r'g_rgProfileData = .*?(\d{15,})', profile_resp)
+                if steamid:
+                    steamid = steamid[0]
+            else:
+                steamid = str(int(steamid) + 76561197960265728)
+
     else:
         return web.json_response({
             'result': False,
@@ -325,7 +346,6 @@ async def storage_(request):
     more_start = 0
     storage_url = 'http://steamcommunity.com/inventory/%s/%s/2?l=schinese&count=5000&tradable=1&maketable=1' % (steamid, game)
     # storage_url = 'http://steamcommunity.com/profiles/%s/inventory/json/%s/2?l=schinese&trading=1&start=' % (steamid, game)
-    session = aiohttp.ClientSession()
     try:
         resp = await session.get(storage_url)
         res = await resp.json()
