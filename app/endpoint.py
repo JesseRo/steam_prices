@@ -352,7 +352,7 @@ async def storage_(request):
             storage, description = parse(res, storage)
             while 'more_items' in res and res['more_items'] == 1:
                 last_asset = res['last_assetid']
-                resp = await session.get(storage_url + '&start_assetid' + last_asset)
+                resp = await session.get(storage_url + '&start_assetid=' + last_asset)
                 res = await resp.json()
                 while res is None:
                     await asyncio.sleep(10)
