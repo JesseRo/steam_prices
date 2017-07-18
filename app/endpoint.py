@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 
 from aiohttp import web
 import aiohttp_jinja2
@@ -190,7 +190,7 @@ async def prices(request):
                                 it['tax_price'] = get_tax_price(it['price'])
                                 it['imgurl'] = ds['icon_url']
                                 it['name_color'] = ds['name_color']
-                                it['descriptions'] = ds['descriptions']
+                                it['descriptions'] = ds.get('descriptions', [])
                                 it['market_name'] = ds['market_name']
                                 it['type'] = ds['type']
                             items += item
@@ -224,7 +224,7 @@ async def prices(request):
                                 it['tax_price'] = get_tax_price(it['price'])
                                 it['imgurl'] = ds['icon_url']
                                 it['name_color'] = ds['name_color']
-                                it['descriptions'] = ds['descriptions']
+                                it['descriptions'] = ds.get('descriptions', [])
                                 it['market_name'] = ds['market_name']
                                 it['type'] = ds['type']
                             items += item
@@ -323,14 +323,15 @@ async def storage_(request):
     rid = data['rid']
 
     more_start = 0
-    storage_url = 'http://steamcommunity.com/profiles/%s/inventory/json/%s/2?l=schinese&trading=1&start=' % (steamid, game)
+    storage_url = 'http://steamcommunity.com/inventory/%s/%s/2?l=schinese&count=5000&tradable=1&maketable=1' % (steamid, game)
+    # storage_url = 'http://steamcommunity.com/profiles/%s/inventory/json/%s/2?l=schinese&trading=1&start=' % (steamid, game)
     session = aiohttp.ClientSession()
     try:
-        resp = await session.get(storage_url + str(more_start))
+        resp = await session.get(storage_url)
         res = await resp.json()
         while res is None:
             await asyncio.sleep(10)
-        if res['success']:
+        if res['success'] == 1:
             storage = {}
             description = list()
 
@@ -342,16 +343,16 @@ async def storage_(request):
                     group[key].append(item)
                     return group
 
-                _items = _res['rgInventory'].values()
+                _items = _res['assets']
                 _items = functools.reduce(group_by, list(_items), _storage)
-                for k, v in _res['rgDescriptions'].items():
-                    v['id'] = k
-                return _items, list(_res['rgDescriptions'].values())
+                for v in _res['descriptions']:
+                    v['id'] = v['classid'] + '_' + v['instanceid']
+                return _items, list(_res['descriptions'])
 
             storage, description = parse(res, storage)
-            while res['more']:
-                more_start = int(res['more_start'])
-                resp = await session.get(storage_url + str(more_start))
+            while 'more_items' in res and res['more_items'] == 1:
+                last_asset = res['last_assetid']
+                resp = await session.get(storage_url + '&start_assetid' + last_asset)
                 res = await resp.json()
                 while res is None:
                     await asyncio.sleep(10)
@@ -383,13 +384,16 @@ async def storage_(request):
                 'message': '未公开库存资料或者库存为空..'
             })
     except Exception as e:
-        r_session['storage_err'] = True
+        await session.close()
+        if rid not in user_session:
+            user_session[rid] = {}
+        user_session[rid]['storage_err'] = True
         return web.json_response({
             'result': False,
             'message': 'storage_err'
         })
-    finally:
-        session.close()
+    else:
+        await session.close()
         return web.json_response({
             'result': True,
             'game': game
