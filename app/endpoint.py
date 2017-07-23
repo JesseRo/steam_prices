@@ -312,6 +312,10 @@ async def storage_(request):
                 steamid = re.findall(r'g_rgProfileData = .*?(\d{15,})', profile_resp)
                 if steamid:
                     steamid = steamid[0]
+            else:
+                steamid = re.findall(r'(\d{15,})', steamid)
+                if steamid:
+                    steamid = steamid[0]
     elif 'gf_id' in data:
         steamid = data['gf_id']
         if steamid:
@@ -323,7 +327,12 @@ async def storage_(request):
                 if steamid:
                     steamid = steamid[0]
             else:
-                steamid = str(int(steamid) + 76561197960265728)
+                gf_id = steamid
+                steamid = re.findall(r'(\d{15,})', steamid)
+                if steamid:
+                    steamid = steamid[0]
+                else:
+                    steamid = str(int(gf_id) + 76561197960265728)
 
     else:
         return web.json_response({
@@ -347,9 +356,10 @@ async def storage_(request):
     storage_url = 'http://steamcommunity.com/inventory/%s/%s/2?l=schinese&count=5000&tradable=1&maketable=1' % (steamid, game)
     # storage_url = 'http://steamcommunity.com/profiles/%s/inventory/json/%s/2?l=schinese&trading=1&start=' % (steamid, game)
     try:
-        resp = await session.get(storage_url)
-        res = await resp.json()
+        res = None
         while res is None:
+            resp = await session.get(storage_url)
+            res = await resp.json()
             await asyncio.sleep(10)
         if res['success'] == 1:
             storage = {}
@@ -374,8 +384,9 @@ async def storage_(request):
                 last_asset = res['last_assetid']
                 resp = await session.get(storage_url + '&start_assetid=' + last_asset)
                 res = await resp.json()
-                while res is None:
+                if res is None:
                     await asyncio.sleep(10)
+                    continue
                 storage, _description = parse(res, storage)
                 description += _description
             description = list(filter(lambda ds: ds['marketable'] == 1 and ds['tradable'] == 1, description))

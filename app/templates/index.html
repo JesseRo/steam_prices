@@ -235,7 +235,20 @@
                     $('#aftertaxprice').val('显示税前')
                 }
             })
-            $('#calc').on('click', calc)
+            $('#calc').on('click', calc);
+
+            $('#tool_confirm').on('click', function () {
+                var gfid = $('#tool_gfid');
+                var id = null;
+                var steamid = $('#tool_steamid');
+                if(gfid.val() && !steamid.val()){
+                    id = parseInt(gfid.val()) + 76561197960265728;
+                    steamid.val(id);
+                }else if(!gfid.val() && steamid.val()){
+                    id = parseInt(steamid.val()) - 76561197960265728;
+                    gfid.val(id);
+                }
+            })
         })
 
 
@@ -302,6 +315,9 @@
                 <img width="200px" alt="小薇电玩Dota2店铺" src="img/taobao.jpg"/>
                 </a>
                 </div> -->
+                <div style="text-align: left"><label>国服ID</label><input id="tool_gfid" style="width: 70%;margin-left: 3px;"></div>
+                <div style="text-align: left"><label>64位ID</label><input id="tool_steamid" style="width: 70%;"></div>
+                <div><button id="tool_confirm">转换</button></div>
             </div>
         </div>
         <div id="price_div" style="display: {{display}}">
@@ -351,11 +367,11 @@
             <div id="totalInfo">
                 {% if market == 'steam' %}
                 <span>Steam市场总价:</span><span
-                    style="color:red;font-weight:bold;">${{total}}</span><span>(</span>{{number}}<span>件)</span>
+                    style="color:red;font-weight:bold;">${{total}}</span>
                 <span>税后价格:<span style="color:red;font-weight:bold;">${{taxed_total}}</span></span>
                 <br>
                 {%endif%}
-                <span id="rmbvalue">库存收购估价:<span style="color:red;font-weight:bold;font-size:30px" id="salePrice"></span>,有意出售请联系<a
+                <span id="rmbvalue">库存收购估价:<span style="color:red;font-weight:bold;font-size:30px" id="salePrice"></span><span>(</span>{{number}}<span>件)</span>,有意出售请联系<a
                         target="_blank"
                         href="http://wpa.qq.com/msgrd?v=3&amp;uin=454536775&amp;site=qq&amp;menu=yes"><img border="0"
                                                                                                            src="http://wpa.qq.com/pa?p=2:454536775:51"
