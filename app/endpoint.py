@@ -14,6 +14,8 @@ from .tables import *
 import traceback
 import re
 
+steam_timeout = 30
+
 
 def json_dumps(data, **kwargs):
     return json.dumps(data, cls=CJsonEncoder, **kwargs)
@@ -356,11 +358,19 @@ async def storage_(request):
     storage_url = 'http://steamcommunity.com/inventory/%s/%s/2?l=schinese&count=5000&tradable=1&maketable=1' % (steamid, game)
     # storage_url = 'http://steamcommunity.com/profiles/%s/inventory/json/%s/2?l=schinese&trading=1&start=' % (steamid, game)
     try:
-        res = None
-        while res is None:
-            resp = await session.get(storage_url)
+        try:
+            resp = await asyncio.wait_for(session.get(storage_url), steam_timeout)
             res = await resp.json()
-            await asyncio.sleep(10)
+            while res is None:
+                await asyncio.sleep(10)
+                resp = await asyncio.wait_for(session.get(storage_url), steam_timeout)
+                res = await resp.json()
+        except asyncio.futures.TimeoutError:
+            return web.json_response({
+                'result': False,
+                'code': 10001,
+                'message': '连接steam网络异常，稍后重试..'
+            })
         if res['success'] == 1:
             storage = {}
             description = list()
@@ -382,11 +392,19 @@ async def storage_(request):
             storage, description = parse(res, storage)
             while 'more_items' in res and res['more_items'] == 1:
                 last_asset = res['last_assetid']
-                resp = await session.get(storage_url + '&start_assetid=' + last_asset)
-                res = await resp.json()
-                if res is None:
-                    await asyncio.sleep(10)
-                    continue
+                try:
+                    resp = await asyncio.wait_for(session.get(storage_url + '&start_assetid=' + last_asset), steam_timeout)
+                    res = await resp.json()
+                    while res is None:
+                        await asyncio.sleep(10)
+                        resp = await asyncio.wait_for(session.get(storage_url + '&start_assetid=' + last_asset), steam_timeout)
+                        res = await resp.json()
+                except asyncio.futures.TimeoutError:
+                    return web.json_response({
+                        'result': False,
+                        'code': 10001,
+                        'message': '连接steam网络异常，稍后重试..'
+                    })
                 storage, _description = parse(res, storage)
                 description += _description
             description = list(filter(lambda ds: ds['marketable'] == 1 and ds['tradable'] == 1, description))
