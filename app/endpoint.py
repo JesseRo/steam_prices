@@ -366,6 +366,7 @@ async def storage_(request):
                 resp = await asyncio.wait_for(session.get(storage_url), steam_timeout)
                 res = await resp.json()
         except asyncio.futures.TimeoutError:
+            await session.close()
             return web.json_response({
                 'result': False,
                 'code': 10001,
@@ -400,6 +401,7 @@ async def storage_(request):
                         resp = await asyncio.wait_for(session.get(storage_url + '&start_assetid=' + last_asset), steam_timeout)
                         res = await resp.json()
                 except asyncio.futures.TimeoutError:
+                    await session.close()
                     return web.json_response({
                         'result': False,
                         'code': 10001,
@@ -464,3 +466,14 @@ async def query(request):
             'result': False,
             'reason': 'loading'
         })
+
+
+@aiohttp_jinja2.template('sell.html')
+async def sell(request):
+    user_session = await get_session(request)
+    data = await request.post()
+    if 'rid' not in data:
+        return web.HTTPInternalServerError(text='查询到的库存已过期，请重新查询..')
+    rid = data['rid']
+    r_session = user_session[rid]
+    return {}

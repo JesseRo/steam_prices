@@ -1,7 +1,7 @@
 database: dota2
-user: root
-password: dota2_market_134
-host: 103.242.132.133
+user: jesse
+password: chukucunDAO123.
+host: 47.94.133.54
 port: 3306
 minsize: 2
 maxsize: 10

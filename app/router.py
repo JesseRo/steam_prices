@@ -8,3 +8,4 @@ def setup_routes(app):
     app.router.add_get('/query', query)
     app.router.add_post('/login', login)
     app.router.add_get('/islogin', islogin)
+    app.router.add_get('/sell', sell)
